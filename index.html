@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Avanzada de Sistemas de Potencia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .dark-mode {
+            background-color: #1f2937;
+            color: #f9fafb;
+        }
+        .dark-mode .bg-white {
+            background-color: #374151;
+        }
+        .dark-mode .text-gray-800 {
+            color: #f9fafb;
+        }
+        .dark-mode .text-gray-600 {
+            color: #d1d5db;
+        }
+        .dark-mode .text-gray-700 {
+            color: #e5e7eb;
+        }
+        .dark-mode .border-gray-300 {
+            border-color: #4b5563;
+        }
+        .dark-mode .bg-indigo-50 {
+            background-color: #312e81;
+        }
+        .dark-mode .bg-gray-50 {
+            background-color: #111827;
+        }
+        .tab-active {
+            background-color: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+        .tab-inactive {
+            background-color: white;
+            color: #4338ca;
+            border-color: #e5e7eb;
+        }
+        .dark-mode .tab-inactive {
+            background-color: #374151;
+            color: #a5b4fc;
+            border-color: #4b5563;
+        }
+        .input-group {
+            position: relative;
+        }
+        .input-unit {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            pointer-events: none;
+        }
+        .dark-mode .input-unit {
+            color: #9ca3af;
+        }
+        #results-card {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.8s ease-in-out, opacity 0.6s ease-in-out;
+            opacity: 0;
+        }
+        #results-card.show {
+            max-height: 2000px;
+            opacity: 1;
+        }
+        .form-section-title {
+            font-weight: 600;
+            color: #4f46e5;
+            border-bottom: 2px solid #e0e7ff;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            margin-top: 1.5rem;
+        }
+        .dark-mode .form-section-title {
+            color: #a5b4fc;
+            border-bottom-color: #4f46e5;
+        }
+        .example-btn {
+            transition: all 0.3s;
+        }
+        .example-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .power-angle-chart {
+            max-height: 300px;
+        }
+        .result-highlight {
+            background: linear-gradient(120deg, #a5b4fc 0%, #4f46e5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-6xl mx-auto">
+        <!-- Encabezado con controles -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">Calculadora Avanzada de Sistemas de Potencia</h1>
+            <div class="flex space-x-2">
+                <button id="theme-toggle" class="p-2 rounded-full bg-white dark:bg-gray-700 shadow-md">
+                    <i class="fas fa-moon text-gray-600 dark:text-yellow-300"></i>
+                </button>
+                <button id="save-data" class="p-2 rounded-full bg-white dark:bg-gray-700 shadow-md" title="Guardar datos">
+                    <i class="fas fa-save text-gray-600 dark:text-green-400"></i>
+                </button>
+                <button id="load-data" class="p-2 rounded-full bg-white dark:bg-gray-700 shadow-md" title="Cargar datos">
+                    <i class="fas fa-folder-open text-gray-600 dark:text-blue-400"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tarjeta Principal de la Calculadora -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8 mb-6">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Herramienta para análisis de estabilidad de ángulo en generadores síncronos</h2>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">Todos los valores en por unidad (pu) a menos que se indique lo contrario</p>
+            </div>
+
+            <!-- Pestañas de Selección -->
+            <div class="grid grid-cols-3 mb-4">
+                <button id="tab-q" class="py-3 px-2 text-center font-semibold rounded-t-lg border-b-2 focus:outline-none transition-colors duration-300 tab-inactive" onclick="switchTab('q')">
+                    <i class="fas fa-bolt mr-2"></i>Calcular Q
+                </button>
+                <button id="tab-delta" class="py-3 px-2 text-center font-semibold rounded-t-lg border-b-2 focus:outline-none transition-colors duration-300 tab-inactive" onclick="switchTab('delta')">
+                    <i class="fas fa-angle-double-right mr-2"></i>Calcular δ
+                </button>
+                <button id="tab-system" class="py-3 px-2 text-center font-semibold rounded-t-lg border-b-2 focus:outline-none transition-colors duration-300 tab-active" onclick="switchTab('system')">
+                    <i class="fas fa-cogs mr-2"></i>Análisis de Sistema
+                </button>
+            </div>
+
+            <!-- Botones de ejemplos -->
+            <div class="mb-6 flex flex-wrap gap-2 justify-center">
+                <button class="example-btn bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-sm" onclick="loadExample('basic')">
+                    Ejemplo Básico
+                </button>
+                <button class="example-btn bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-3 py-1 rounded-full text-sm" onclick="loadExample('stability')">
+                    Análisis de Estabilidad
+                </button>
+                <button class="example-btn bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-3 py-1 rounded-full text-sm" onclick="loadExample('reactive')">
+                    Control de Reactiva
+                </button>
+                <button class="example-btn bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 px-3 py-1 rounded-full text-sm" onclick="clearAll()">
+                    <i class="fas fa-trash-alt mr-1"></i>Limpiar
+                </button>
+            </div>
+
+            <!-- Contenedor de Formularios -->
+            <div class="mt-4">
+                <!-- Formulario para Calcular Q -->
+                <div id="form-q" class="hidden">
+                    <p class="text-sm text-center text-gray-500 dark:text-gray-400 mb-4">Calcula la potencia reactiva del generador con datos en sus terminales.</p>
+                    
+                    <h3 class="form-section-title">Datos del Generador</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="input-group">
+                            <label for="q-vt" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Voltaje Terminal (Vt)</label>
+                            <input type="number" id="q-vt" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="1.05" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                        <div class="input-group">
+                            <label for="q-p" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Potencia Activa (P)</label>
+                            <input type="number" id="q-p" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="0.8" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                        <div class="input-group">
+                            <label for="q-xs" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reactancia Síncrona (Xs)</label>
+                            <input type="number" id="q-xs" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="1.2" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                        <div class="input-group">
+                            <label for="q-e" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tensión Inducida (E)</label>
+                            <input type="number" id="q-e" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="1.5" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                    </div>
+
+                    <button onclick="calculateQ()" class="mt-8 w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">
+                        <i class="fas fa-calculator mr-2"></i>Calcular Q
+                    </button>
+                </div>
+
+                <!-- Formulario para Calcular δ -->
+                <div id="form-delta" class="hidden">
+                    <p class="text-sm text-center text-gray-500 dark:text-gray-400 mb-4">Calcula el ángulo del rotor con datos en los terminales del generador.</p>
+                    
+                    <h3 class="form-section-title">Datos del Generador</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="input-group">
+                            <label for="delta-vt" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Voltaje Terminal (Vt)</label>
+                            <input type="number" id="delta-vt" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="1.05" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                        <div class="input-group">
+                            <label for="delta-p" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Potencia Activa (P)</label>
+                            <input type="number" id="delta-p" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="0.8" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                        <div class="input-group">
+                            <label for="delta-xs" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reactancia Síncrona (Xs)</label>
+                            <input type="number" id="delta-xs" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="1.2" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                        <div class="input-group">
+                            <label for="delta-e" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tensión Inducida (E)</label>
+                            <input type="number" id="delta-e" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="1.5" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                    </div>
+
+                    <button onclick="calculateDelta()" class="mt-8 w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">
+                        <i class="fas fa-calculator mr-2"></i>Calcular δ
+                    </button>
+                </div>
+
+                <!-- Formulario para Análisis de Sistema Completo -->
+                <div id="form-system">
+                    <p class="text-sm text-center text-gray-500 dark:text-gray-400 mb-4">Resuelve un sistema completo a partir de datos en el nudo infinito. Todos los valores en por unidad (pu).</p>
+                    
+                    <h3 class="form-section-title">1. Componentes del Sistema (Reactancias)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="input-group">
+                            <label for="xs-gen" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">X'd Generador</label>
+                            <input type="number" id="xs-gen" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="0.3" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                        <div class="input-group">
+                            <label for="xs-tr" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">X Transformador</label>
+                            <input type="number" id="xs-tr" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="0.1" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                        <div></div>
+                         <div class="input-group">
+                            <label for="xs-l1" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">X Línea 1</label>
+                            <input type="number" id="xs-l1" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="0.2" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                         <div class="input-group">
+                            <label for="xs-l2" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">X Línea 2</label>
+                            <input type="number" id="xs-l2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="0.3" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                    </div>
+
+                    <h3 class="form-section-title">2. Condiciones en el Nudo Infinito</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="input-group">
+                            <label for="p-nudo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Potencia Activa (P)</label>
+                            <input type="number" id="p-nudo" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="1.0" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                        <div class="input-group">
+                            <label for="v-nudo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Voltaje (Vnudo)</label>
+                            <input type="number" id="v-nudo" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="1.0" step="0.01">
+                            <span class="input-unit">pu</span>
+                        </div>
+                         <div class="input-group">
+                            <label for="fp-nudo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Factor de Potencia</label>
+                            <input type="number" id="fp-nudo" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" value="0.95" step="0.01" min="0" max="1">
+                        </div>
+                    </div>
+                     <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Factor de Potencia</label>
+                        <div class="flex items-center space-x-4">
+                            <label for="fp-ind" class="flex items-center"><input type="radio" id="fp-ind" name="fp-type" value="ind" class="h-4 w-4 text-indigo-600 border-gray-300" checked> <span class="ml-2">Inductivo (en atraso)</span></label>
+                            <label for="fp-cap" class="flex items-center"><input type="radio" id="fp-cap" name="fp-type" value="cap" class="h-4 w-4 text-indigo-600 border-gray-300"> <span class="ml-2">Capacitivo (en adelanto)</span></label>
+                        </div>
+                    </div>
+
+                    <button onclick="calculateSystem()" class="mt-8 w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">
+                        <i class="fas fa-cogs mr-2"></i>Resolver Sistema
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta de Resultados -->
+        <div id="results-card" class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
+             <div class="flex justify-between items-center mb-4">
+                 <h2 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Resultados y Análisis</h2>
+                 <button id="export-pdf" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center">
+                     <i class="fas fa-file-pdf mr-2"></i>Exportar PDF
+                 </button>
+             </div>
+             <div id="results-content"></div>
+        </div>
+        
+        <!-- Contenedor para mensajes de error -->
+        <div id="error-message" class="mt-4 text-center text-red-600 dark:text-red-400 font-semibold"></div>
+
+    </div>
+
+    <script>
+        // --- Configuración de modo oscuro ---
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = themeToggle.querySelector('i');
+        
+        // Verificar preferencia del usuario
+        if (localStorage.getItem('darkMode') === 'enabled' || 
+            (window.matchMedia('(prefers-color-scheme: dark)').matches && !localStorage.getItem('darkMode'))) {
+            document.body.classList.add('dark-mode');
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+        }
+        
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            if (document.body.classList.contains('dark-mode')) {
+                localStorage.setItem('darkMode', 'enabled');
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            } else {
+                localStorage.setItem('darkMode', 'disabled');
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            }
+        });
+
+        // --- Clases para manejar números complejos ---
+        class Complex {
+            constructor(re, im) {
+                this.re = re;
+                this.im = im;
+            }
+            add(other) {
+                return new Complex(this.re + other.re, this.im + other.im);
+            }
+            subtract(other) {
+                return new Complex(this.re - other.re, this.im - other.im);
+            }
+            multiply(other) {
+                const re = this.re * other.re - this.im * other.im;
+                const im = this.re * other.im + this.im * other.re;
+                return new Complex(re, im);
+            }
+            divide(other) {
+                const denominator = other.re * other.re + other.im * other.im;
+                const re = (this.re * other.re + this.im * other.im) / denominator;
+                const im = (this.im * other.re - this.re * other.im) / denominator;
+                return new Complex(re, im);
+            }
+            conjugate() {
+                return new Complex(this.re, -this.im);
+            }
+            magnitude() {
+                return Math.sqrt(this.re * this.re + this.im * this.im);
+            }
+            angle() { // en grados
+                return Math.atan2(this.im, this.re) * (180 / Math.PI);
+            }
+            toString() {
+                return `${this.re.toFixed(3)} + j${this.im.toFixed(3)}`;
+            }
+        }
+        
+        // --- Funciones de utilidad ---
+        function getValues(ids) {
+            const values = {};
+            for (const id of ids) {
+                const element = document.getElementById(id);
+                if (!element) {
+                    showError(`Elemento con ID '${id}' no encontrado.`);
+                    return null;
+                }
+                
+                const value = parseFloat(element.value);
+                if (isNaN(value)) {
+                    showError(`Por favor, ingresa un valor válido para ${element.previousElementSibling.textContent}`);
+                    element.focus();
+                    return null;
+                }
+                
+                // Validaciones específicas
+                if (id === 'fp-nudo' && (value < 0 || value > 1)) {
+                    showError('El factor de potencia debe estar entre 0 y 1');
+                    element.focus();
+                    return null;
+                }
+                
+                values[id] = value;
+            }
+            clearError();
+            return values;
+        }
+        
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+        }
+        
+        function clearError() {
+            document.getElementById('error-message').textContent = '';
+        }
+        
+        function showResults(html) {
+            const resultsContent = document.getElementById('results-content');
+            const resultsCard = document.getElementById('results-card');
+            
+            resultsContent.innerHTML = html;
+            resultsCard.classList.add('show');
+            
+            // Desplazar suavemente a los resultados
+            resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // --- Lógica de la Interfaz ---
+        function switchTab(tab) {
+            ['q', 'delta', 'system'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.replace('tab-active', 'tab-inactive');
+                document.getElementById(`form-${t}`)?.classList.add('hidden');
+            });
+            document.getElementById(`tab-${tab}`).classList.replace('tab-inactive', 'tab-active');
+            document.getElementById(`form-${tab}`).classList.remove('hidden');
+            
+            document.getElementById('results-card').classList.remove('show');
+            clearError();
+        }
+
+        // --- Cálculos para la pestaña Q ---
+        function calculateQ() {
+            const ids = ['q-vt', 'q-p', 'q-xs', 'q-e'];
+            const values = getValues(ids);
+            if (!values) return;
+            
+            const Vt = values['q-vt'];
+            const P = values['q-p'];
+            const Xs = values['q-xs'];
+            const E = values['q-e'];
+            
+            // Calcular el ángulo delta usando P = (E*Vt/Xs)*sin(delta)
+            const sinDelta = (P * Xs) / (E * Vt);
+            
+            if (Math.abs(sinDelta) > 1) {
+                showError('Los valores ingresados producen un resultado no válido (|sin(δ)| > 1). Verifique los datos.');
+                return;
+            }
+            
+            const delta = Math.asin(sinDelta); // en radianes
+            const deltaDeg = delta * (180 / Math.PI);
+            
+            // Calcular Q = (E*Vt/Xs)*cos(delta) - Vt²/Xs
+            const Q = (E * Vt / Xs) * Math.cos(delta) - (Vt * Vt / Xs);
+            
+            // Calcular factor de potencia
+            const S = Math.sqrt(P*P + Q*Q);
+            const fp = P / S;
+            const fpType = Q >= 0 ? 'Inductivo' : 'Capacitivo';
+            
+            const resultHTML = `
+                <div class="bg-indigo-50 dark:bg-indigo-900 p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-4 text-center mb-6">
+                    <div>
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Potencia Reactiva (Q)</p>
+                        <p class="text-2xl font-extrabold result-highlight">${Q.toFixed(3)} pu</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Ángulo δ</p>
+                        <p class="text-2xl font-extrabold result-highlight">${deltaDeg.toFixed(2)}°</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Factor de Potencia</p>
+                        <p class="text-2xl font-extrabold result-highlight">${fp.toFixed(3)} (${fpType})</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-3">Detalles del Cálculo</h3>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                        <p class="mb-2"><strong>Ecuación de potencia activa:</strong> P = (E·Vt/Xs)·sin(δ)</p>
+                        <p class="mb-2">sin(δ) = (P·Xs)/(E·Vt) = (${P}·${Xs})/(${E}·${Vt}) = ${sinDelta.toFixed(4)}</p>
+                        <p class="mb-2">δ = arcsin(${sinDelta.toFixed(4)}) = ${delta.toFixed(4)} rad = ${deltaDeg.toFixed(2)}°</p>
+                        <p class="mb-2"><strong>Ecuación de potencia reactiva:</strong> Q = (E·Vt/Xs)·cos(δ) - Vt²/Xs</p>
+                        <p>Q = (${E}·${Vt}/${Xs})·cos(${delta.toFixed(4)}) - ${Vt}²/${Xs} = ${Q.toFixed(4)} pu</p>
+                    </div>
+                </div>
+                
+                <div class="power-angle-chart">
+                    <canvas id="q-chart"></canvas>
+                </div>
+            `;
+            
+            showResults(resultHTML);
+            
+            // Crear gráfico
+            setTimeout(() => {
+                createPowerAngleChart('q-chart', E, Vt, Xs, deltaDeg, P, Q);
+            }, 100);
+        }
+
+        // --- Cálculos para la pestaña Delta ---
+        function calculateDelta() {
+            const ids = ['delta-vt', 'delta-p', 'delta-xs', 'delta-e'];
+            const values = getValues(ids);
+            if (!values) return;
+            
+            const Vt = values['delta-vt'];
+            const P = values['delta-p'];
+            const Xs = values['delta-xs'];
+            const E = values['delta-e'];
+            
+            // Calcular el ángulo delta usando P = (E*Vt/Xs)*sin(delta)
+            const sinDelta = (P * Xs) / (E * Vt);
+            
+            if (Math.abs(sinDelta) > 1) {
+                showError('Los valores ingresados producen un resultado no válido (|sin(δ)| > 1). Verifique los datos.');
+                return;
+            }
+            
+            const delta = Math.asin(sinDelta); // en radianes
+            const deltaDeg = delta * (180 / Math.PI);
+            
+            // Calcular Q = (E*Vt/Xs)*cos(delta) - Vt²/Xs
+            const Q = (E * Vt / Xs) * Math.cos(delta) - (Vt * Vt / Xs);
+            
+            const resultHTML = `
+                <div class="bg-indigo-50 dark:bg-indigo-900 p-4 rounded-lg grid grid-cols-2 md:grid-cols-3 gap-4 text-center mb-6">
+                    <div>
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Ángulo del Rotor (δ)</p>
+                        <p class="text-2xl font-extrabold result-highlight">${deltaDeg.toFixed(2)}°</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Potencia Reactiva (Q)</p>
+                        <p class="text-2xl font-extrabold result-highlight">${Q.toFixed(3)} pu</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Potencia Máxima (Pmax)</p>
+                        <p class="text-2xl font-extrabold result-highlight">${(E * Vt / Xs).toFixed(3)} pu</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-3">Detalles del Cálculo</h3>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                        <p class="mb-2"><strong>Ecuación de potencia activa:</strong> P = (E·Vt/Xs)·sin(δ)</p>
+                        <p class="mb-2">sin(δ) = (P·Xs)/(E·Vt) = (${P}·${Xs})/(${E}·${Vt}) = ${sinDelta.toFixed(4)}</p>
+                        <p class="mb-2">δ = arcsin(${sinDelta.toFixed(4)}) = ${delta.toFixed(4)} rad = ${deltaDeg.toFixed(2)}°</p>
+                        <p class="mb-2"><strong>Margen de estabilidad:</strong> ${((E * Vt / Xs) - P).toFixed(3)} pu</p>
+                        <p><strong>Porcentaje de carga:</strong> ${(P / (E * Vt / Xs) * 100).toFixed(1)}%</p>
+                    </div>
+                </div>
+                
+                <div class="power-angle-chart">
+                    <canvas id="delta-chart"></canvas>
+                </div>
+            `;
+            
+            showResults(resultHTML);
+            
+            // Crear gráfico
+            setTimeout(() => {
+                createPowerAngleChart('delta-chart', E, Vt, Xs, deltaDeg, P, Q);
+            }, 100);
+        }
+
+        // --- Cálculos para el Sistema Completo ---
+        function calculateSystem() {
+            const ids = ['xs-gen', 'xs-tr', 'xs-l1', 'xs-l2', 'p-nudo', 'v-nudo', 'fp-nudo'];
+            const values = getValues(ids);
+            if (!values) return;
+
+            const fpType = document.querySelector('input[name="fp-type"]:checked').value;
+
+            // --- Cálculos y Paso a Paso ---
+            let stepsHTML = '';
+
+            // 1. Calcular Reactancia Total
+            const x_paralelo = (values['xs-l1'] * values['xs-l2']) / (values['xs-l1'] + values['xs-l2']);
+            const x_total = values['xs-gen'] + values['xs-tr'] + x_paralelo;
+            stepsHTML += `<div class="mb-4"><p class="font-semibold text-gray-700 dark:text-gray-300">1. Cálculo de Reactancia Total (Xs)</p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">X_paralelo = (${values['xs-l1']} × ${values['xs-l2']}) / (${values['xs-l1']} + ${values['xs-l2']}) = ${x_paralelo.toFixed(3)} pu</p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">Xs_Total = ${values['xs-gen']} + ${values['xs-tr']} + ${x_paralelo.toFixed(3)} = <span class="font-bold text-indigo-700 dark:text-indigo-300">${x_total.toFixed(3)} pu</span></p></div>`;
+
+            // 2. Calcular Q y S en el nudo
+            const p_nudo = values['p-nudo'];
+            const fp_nudo = values['fp-nudo'];
+            const theta = Math.acos(fp_nudo);
+            let q_nudo = p_nudo * Math.tan(theta);
+            if (fpType === 'cap') q_nudo = -q_nudo; // Q es negativa para FP capacitivo
+            
+            const S_nudo = new Complex(p_nudo, q_nudo);
+            stepsHTML += `<div class="mb-4"><p class="font-semibold text-gray-700 dark:text-gray-300">2. Potencia Compleja en el Nudo (S_nudo)</p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">θ = arccos(${fp_nudo}) = ${ (theta * 180 / Math.PI).toFixed(2) }°</p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">Q_nudo = P × tan(θ) = ${q_nudo.toFixed(3)} pu</p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">S_nudo = <span class="font-bold text-indigo-700 dark:text-indigo-300">${S_nudo.re.toFixed(3)} + j${S_nudo.im.toFixed(3)} pu</span></p></div>`;
+
+            // 3. Calcular Corriente (I)
+            const V_nudo = new Complex(values['v-nudo'], 0); // Voltaje de referencia
+            const I_conjugate = new Complex(S_nudo.re / V_nudo.re, S_nudo.im / V_nudo.re);
+            const I = I_conjugate.conjugate();
+            stepsHTML += `<div class="mb-4"><p class="font-semibold text-gray-700 dark:text-gray-300">3. Cálculo de la Corriente (I)</p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">I = (S_nudo / V_nudo)* = <span class="font-bold text-indigo-700 dark:text-indigo-300">${I.re.toFixed(3)} + j${I.im.toFixed(3)} pu</span></p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">|I| = ${I.magnitude().toFixed(3)} pu, ∠${I.angle().toFixed(2)}°</p></div>`;
+
+            // 4. Calcular Tensión Inducida (E)
+            const jX_total = new Complex(0, x_total);
+            const V_caida = I.multiply(jX_total);
+            const E = V_nudo.add(V_caida);
+            stepsHTML += `<div class="mb-4"><p class="font-semibold text-gray-700 dark:text-gray-300">4. Cálculo de Tensión Inducida (E)</p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">E = V_nudo + I × jX_total</p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">E = ${V_nudo.re.toFixed(2)} + (${I.re.toFixed(3)} + j${I.im.toFixed(3)}) × j${x_total.toFixed(3)}</p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">E = <span class="font-bold text-indigo-700 dark:text-indigo-300">${E.re.toFixed(3)} + j${E.im.toFixed(3)} pu</span></p></div>`;
+            
+            // 5. Calcular Potencia en el Generador
+            const S_gen = E.multiply(I.conjugate());
+            stepsHTML += `<div class="mb-4"><p class="font-semibold text-gray-700 dark:text-gray-300">5. Potencia en el Generador (S_gen)</p>
+                          <p class="text-gray-600 dark:text-gray-400 pl-4">S_gen = E × I* = <span class="font-bold text-indigo-700 dark:text-indigo-300">${S_gen.re.toFixed(3)} + j${S_gen.im.toFixed(3)} pu</span></p></div>`;
+
+            // 6. Ecuación de Potencia
+            const P_max = (E.magnitude() * V_nudo.magnitude()) / x_total;
+            stepsHTML += `<div class="mb-4"><p class="font-semibold text-gray-700 dark:text-gray-300">6. Ecuación Potencia-Ángulo</p>
+                           <p class="text-gray-600 dark:text-gray-400 pl-4">P(δ) = (|E|×|V|/Xs) × sin(δ)</p>
+                           <p class="text-gray-600 dark:text-gray-400 pl-4">P(δ) = <span class="font-bold text-indigo-700 dark:text-indigo-300">${P_max.toFixed(3)} × sin(δ)</span></p></div>`;
+
+            // 7. Análisis de Estabilidad
+            const margen_estabilidad = P_max - p_nudo;
+            const porcentaje_carga = (p_nudo / P_max) * 100;
+            stepsHTML += `<div class="mb-4"><p class="font-semibold text-gray-700 dark:text-gray-300">7. Análisis de Estabilidad</p>
+                           <p class="text-gray-600 dark:text-gray-400 pl-4">Margen de estabilidad = P_max - P = ${P_max.toFixed(3)} - ${p_nudo.toFixed(3)} = <span class="font-bold text-indigo-700 dark:text-indigo-300">${margen_estabilidad.toFixed(3)} pu</span></p>
+                           <p class="text-gray-600 dark:text-gray-400 pl-4">Porcentaje de carga = (P / P_max) × 100 = (${p_nudo.toFixed(3)} / ${P_max.toFixed(3)}) × 100 = <span class="font-bold text-indigo-700 dark:text-indigo-300">${porcentaje_carga.toFixed(1)}%</span></p></div>`;
+
+            let finalResultHTML = `
+                <div class="bg-indigo-50 dark:bg-indigo-900 p-4 rounded-lg grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-6">
+                    <div>
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Tensión Inducida |E|</p>
+                        <p class="text-2xl font-extrabold result-highlight">${E.magnitude().toFixed(3)} pu</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Ángulo δ</p>
+                        <p class="text-2xl font-extrabold result-highlight">${E.angle().toFixed(2)}°</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">P Mecánica (Pm)</p>
+                        <p class="text-2xl font-extrabold result-highlight">${S_gen.re.toFixed(3)} pu</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Q Generador (Qg)</p>
+                        <p class="text-2xl font-extrabold result-highlight">${S_gen.im.toFixed(3)} pu</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Potencia Máxima (Pmax)</p>
+                        <p class="text-2xl font-extrabold result-highlight">${P_max.toFixed(3)} pu</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Margen de Estabilidad</p>
+                        <p class="text-2xl font-extrabold ${margen_estabilidad > 0.2 ? 'text-green-600' : 'text-red-600'}">${margen_estabilidad.toFixed(3)} pu</p>
+                    </div>
+                </div>
+                
+                <div class="power-angle-chart mb-6">
+                    <canvas id="system-chart"></canvas>
+                </div>
+                
+                <hr class="my-6"/>
+                <h3 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">Paso a Paso del Cálculo</h3>
+                ${stepsHTML}`;
+            
+            showResults(finalResultHTML);
+            
+            // Crear gráfico
+            setTimeout(() => {
+                createPowerAngleChart('system-chart', E.magnitude(), V_nudo.magnitude(), x_total, E.angle(), p_nudo, q_nudo);
+            }, 100);
+        }
+
+        // --- Funciones para gráficos ---
+        function createPowerAngleChart(canvasId, E, V, Xs, delta, P, Q) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            
+            // Generar datos para la curva P-δ
+            const deltaValues = [];
+            const pValues = [];
+            const maxDelta = 180; // grados
+            const Pmax = (E * V) / Xs;
+            
+            for (let d = -maxDelta; d <= maxDelta; d += 5) {
+                deltaValues.push(d);
+                pValues.push(Pmax * Math.sin(d * Math.PI / 180));
+            }
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: deltaValues,
+                    datasets: [{
+                        label: 'P(δ) = Pmax × sin(δ)',
+                        data: pValues,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Punto de Operación',
+                        data: Array(deltaValues.length).fill(null).map((_, i) => 
+                            Math.abs(deltaValues[i] - delta) < 5 ? P : null
+                        ),
+                        pointBackgroundColor: '#ef4444',
+                        pointBorderColor: '#ef4444',
+                        pointRadius: 6,
+                        showLine: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Curva Potencia-Ángulo',
+                            font: { size: 16 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.datasetIndex === 0) {
+                                        return `P = ${context.parsed.y.toFixed(3)} pu, δ = ${context.label}°`;
+                                    } else {
+                                        return `Punto de operación: P = ${P.toFixed(3)} pu, δ = ${delta.toFixed(1)}°`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Ángulo δ (grados)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Potencia Activa P (pu)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            },
+                            suggestedMin: -Pmax * 1.1,
+                            suggestedMax: Pmax * 1.1
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Funciones para ejemplos ---
+        function loadExample(type) {
+            clearError();
+            
+            switch(type) {
+                case 'basic':
+                    // Ejemplo básico de sistema
+                    document.getElementById('xs-gen').value = 0.3;
+                    document.getElementById('xs-tr').value = 0.1;
+                    document.getElementById('xs-l1').value = 0.2;
+                    document.getElementById('xs-l2').value = 0.3;
+                    document.getElementById('p-nudo').value = 1.0;
+                    document.getElementById('v-nudo').value = 1.0;
+                    document.getElementById('fp-nudo').value = 0.95;
+                    document.getElementById('fp-ind').checked = true;
+                    
+                    // También establecer valores para otras pestañas
+                    document.getElementById('q-vt').value = 1.05;
+                    document.getElementById('q-p').value = 0.8;
+                    document.getElementById('q-xs').value = 1.2;
+                    document.getElementById('q-e').value = 1.5;
+                    
+                    document.getElementById('delta-vt').value = 1.05;
+                    document.getElementById('delta-p').value = 0.8;
+                    document.getElementById('delta-xs').value = 1.2;
+                    document.getElementById('delta-e').value = 1.5;
+                    break;
+                    
+                case 'stability':
+                    // Ejemplo con margen de estabilidad reducido
+                    document.getElementById('xs-gen').value = 0.4;
+                    document.getElementById('xs-tr').value = 0.15;
+                    document.getElementById('xs-l1').value = 0.3;
+                    document.getElementById('xs-l2').value = 0.4;
+                    document.getElementById('p-nudo').value = 1.2;
+                    document.getElementById('v-nudo').value = 0.95;
+                    document.getElementById('fp-nudo').value = 0.9;
+                    document.getElementById('fp-ind').checked = true;
+                    break;
+                    
+                case 'reactive':
+                    // Ejemplo con control de reactiva
+                    document.getElementById('xs-gen').value = 0.25;
+                    document.getElementById('xs-tr').value = 0.08;
+                    document.getElementById('xs-l1').value = 0.15;
+                    document.getElementById('xs-l2').value = 0.25;
+                    document.getElementById('p-nudo').value = 0.8;
+                    document.getElementById('v-nudo').value = 1.05;
+                    document.getElementById('fp-nudo').value = 0.98;
+                    document.getElementById('fp-cap').checked = true;
+                    break;
+            }
+            
+            showError('Ejemplo cargado. Haga clic en "Resolver Sistema" para ver los resultados.');
+        }
+
+        function clearAll() {
+            // Limpiar todos los campos de entrada
+            const inputs = document.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                input.value = '';
+            });
+            
+            // Restablecer valores por defecto en la pestaña sistema
+            document.getElementById('xs-gen').value = 0.3;
+            document.getElementById('xs-tr').value = 0.1;
+            document.getElementById('xs-l1').value = 0.2;
+            document.getElementById('xs-l2').value = 0.3;
+            document.getElementById('p-nudo').value = 1.0;
+            document.getElementById('v-nudo').value = 1.0;
+            document.getElementById('fp-nudo').value = 0.95;
+            document.getElementById('fp-ind').checked = true;
+            
+            // Ocultar resultados
+            document.getElementById('results-card').classList.remove('show');
+            clearError();
+        }
+
+        // --- Funciones para guardar/cargar datos ---
+        document.getElementById('save-data').addEventListener('click', function() {
+            const data = {
+                'xs-gen': document.getElementById('xs-gen').value,
+                'xs-tr': document.getElementById('xs-tr').value,
+                'xs-l1': document.getElementById('xs-l1').value,
+                'xs-l2': document.getElementById('xs-l2').value,
+                'p-nudo': document.getElementById('p-nudo').value,
+                'v-nudo': document.getElementById('v-nudo').value,
+                'fp-nudo': document.getElementById('fp-nudo').value,
+                'fp-type': document.querySelector('input[name="fp-type"]:checked').value,
+                'q-vt': document.getElementById('q-vt').value,
+                'q-p': document.getElementById('q-p').value,
+                'q-xs': document.getElementById('q-xs').value,
+                'q-e': document.getElementById('q-e').value,
+                'delta-vt': document.getElementById('delta-vt').value,
+                'delta-p': document.getElementById('delta-p').value,
+                'delta-xs': document.getElementById('delta-xs').value,
+                'delta-e': document.getElementById('delta-e').value
+            };
+            
+            localStorage.setItem('powerSystemData', JSON.stringify(data));
+            showError('Datos guardados correctamente.');
+        });
+
+        document.getElementById('load-data').addEventListener('click', function() {
+            const savedData = localStorage.getItem('powerSystemData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                
+                for (const key in data) {
+                    const element = document.getElementById(key);
+                    if (element) {
+                        if (element.type === 'radio') {
+                            if (element.value === data[key]) {
+                                element.checked = true;
+                            }
+                        } else {
+                            element.value = data[key];
+                        }
+                    }
+                }
+                
+                showError('Datos cargados correctamente.');
+            } else {
+                showError('No hay datos guardados.');
+            }
+        });
+
+        // --- Función para exportar a PDF ---
+        document.getElementById('export-pdf').addEventListener('click', function() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Título
+            doc.setFontSize(20);
+            doc.setTextColor(79, 70, 229);
+            doc.text('Resultados del Análisis del Sistema de Potencia', 20, 20);
+            
+            // Contenido de resultados
+            const resultsText = document.getElementById('results-content').innerText;
+            const splitText = doc.splitTextToSize(resultsText, 170);
+            
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(splitText, 20, 40);
+            
+            // Guardar PDF
+            doc.save('analisis_sistema_potencia.pdf');
+        });
+
+        // Inicializar la aplicación
+        document.addEventListener('DOMContentLoaded', function() {
+            switchTab('system');
+            
+            // Cargar datos guardados si existen
+            const savedData = localStorage.getItem('powerSystemData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                document.getElementById('load-data').title = 'Cargar datos guardados (' + new Date().toLocaleDateString() + ')';
+            }
+        });
+    </script>
+</body>
+</html>
